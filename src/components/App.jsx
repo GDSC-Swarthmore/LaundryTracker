@@ -11,6 +11,9 @@ import HomePage from './HomePage';
 import CurrentCyclePage from './CurrentCyclePage';
 import SelectLocationPage from './SelectLocationPage';
 import NavBar from './NavBar';
+import { initializeFirebase } from '/util/firebaseConfig.js'
+
+initializeFirebase();
 
 function App() {
   return (
@@ -28,7 +31,6 @@ function App() {
   );
 }
 
-  
   export default App;
 
 
