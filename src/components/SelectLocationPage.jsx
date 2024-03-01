@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
-import { db } from '/util/firebaseConfig'; // Import the Firestore instance from your Firebase config file
-import { getFirestore, collection, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'; // Import Firestore functions
+import React, { useState, useEffect } from 'react';
 
 function SelectLocationPage() {
   const [selectedDorm, setSelectedDorm] = useState(null);
   const [names, setNames] = useState(Array.from({ length: selectedDorm ? selectedDorm[1] : 0 }, () => ''));
+  const [enteredNames, setEnteredNames] = useState(Array.from({ length: selectedDorm ? selectedDorm[1] : 0 }, () => ''));
+  const [timers, setTimers] = useState(Array.from({ length: selectedDorm ? selectedDorm[1] : 0 }, () => 0));
+
+  useEffect(() => {
+    if (selectedDorm) {
+      const intervalId = setInterval(() => {
+        setTimers(prevTimers => prevTimers.map((timer, index) => timer + 1));
+      }, 1000);
+      return () => clearInterval(intervalId);
+    }
+  }, [selectedDorm]);
 
   const dorms = [
     ['Alice Paul', 2],
@@ -25,32 +34,40 @@ function SelectLocationPage() {
   
   const handleDormSelection = (dorm) => {
     setSelectedDorm(dorm);
-    setNames(Array.from({ length: dorm[1] }, () => ''));
+    setEnteredNames(Array.from({ length: dorm[1] }, () => ''));
+    setTimers(Array.from({ length: dorm[1] }, () => 0));
   };
 
   const handleNameChange = (index, event) => {
-    const updatedNames = [...names];
+    const updatedNames = [...enteredNames];
     updatedNames[index] = event.target.value;
-    setNames(updatedNames);
+    setEnteredNames(updatedNames);
   };
 
-  const saveName = async (index) => {
-    if (!selectedDorm || !names[index]) return;
-    const meetingId = selectedDorm[0].toLowerCase().replace(/\s+/g, '');
-    const respondentRef = doc(collection(db, 'laundry_machines', meetingId, 'respondents')); // Reference to the collection
-    await setDoc(respondentRef, {
-      name: names[index],
-      updated: serverTimestamp()
-    });
-    setNames(names.map((name, i) => (i === index ? '' : name)));
+  const saveName = (index) => {
+    if (!selectedDorm || !enteredNames[index]) return;
+    const newNames = [...names];
+    newNames[index] = enteredNames[index];
+    setNames(newNames);
+    setEnteredNames(Array.from({ length: selectedDorm[1] }, () => ''));
+    // Reset the timer associated with the saved name
+    const newTimers = [...timers];
+    newTimers[index] = 0;
+    setTimers(newTimers);
   };
 
-  const removeName = async (index) => {
+  const removeName = (index) => {
     if (!selectedDorm || !names[index]) return;
-    const meetingId = selectedDorm[0].toLowerCase().replace(/\s+/g, '');
-    const respondentRef = doc(collection(db, 'laundry_machines', meetingId, 'respondents', names[index])); // Reference to the document
-    await deleteDoc(respondentRef);
-    setNames(names.map((name, i) => (i === index ? '' : name)));
+    const newNames = [...names];
+    newNames[index] = '';
+    setNames(newNames);
+  };
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -87,25 +104,34 @@ function SelectLocationPage() {
                   />
                   <div className="mt-4">
                     <h3 className="washing">Laundry Machine {index + 1}</h3>
-                    <input
-                      type="text"
-                      value={names[index]}
-                      onChange={(event) => handleNameChange(index, event)}
-                      placeholder="Enter your name"
-                      className="border border-gray-400 rounded px-3 py-2 mt-2"
-                    />
-                    <button
-                      onClick={() => saveName(index)}
-                      className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-2 mr-2"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => removeName(index)}
-                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-2"
-                    >
-                      Remove
-                    </button>
+                    {names[index] ? (
+                      <div>
+                        <p>{names[index]}</p>
+                        <p>{formatTime(timers[index])}</p>
+                        <button
+                          onClick={() => removeName(index)}
+                          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-2"
+                        >
+                          Remove Name
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          type="text"
+                          value={enteredNames[index]}
+                          onChange={(event) => handleNameChange(index, event)}
+                          placeholder="Enter your name"
+                          className="border border-gray-400 rounded px-3 py-2 mt-2"
+                        />
+                        <button
+                          onClick={() => saveName(index)}
+                          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-2 mr-2"
+                        >
+                          Save Name
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -118,6 +144,12 @@ function SelectLocationPage() {
 }
 
 export default SelectLocationPage;
+
+
+
+
+
+
 
 
 
